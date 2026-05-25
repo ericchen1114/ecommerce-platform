@@ -232,5 +232,3 @@ ecommerce-platform/
 | `ZIPKIN_ENDPOINT` | Zipkin 追蹤端點 |
 
 > ⚠️ `.env` 已加入 `.gitignore`，請勿將實際密碼 commit 至版本控制。
-# ecommerce-platform
-# ecommerce-platform
