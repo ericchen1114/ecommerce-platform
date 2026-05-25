@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: "optional:configserver:http://localhost:8888"
+  cloud:
+    config:
+      username: ${CONFIG_USERNAME:admin}
+      password: ${CONFIG_PASSWORD:config123}
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_USERNAME:admin}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411}/api/v2/spans
+
+jwt:
+  secret: ${JWT_SECRET:ecommerce-jwt-secret-key-2026-must-be-at-least-256-bits-long}
+  expiration: 86400000
+
+# ─── SpringDoc OpenAPI 聚合設定（Gateway Swagger UI 顯示所有服務） ────────────
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+    # 聚合各微服務的 API 文件（可在 UI 右上角下拉切換）
+    urls:
+      - name: "🏠 API Gateway"
+        url: /v3/api-docs
+      - name: "👤 User Service"
+        url: /user-service/v3/api-docs
+      - name: "📦 Product Service"
+        url: /product-service/v3/api-docs
+      - name: "🛒 Order Service"
+        url: /order-service/v3/api-docs
+      - name: "💳 Payment Service"
+        url: /payment-service/v3/api-docs
+      - name: "🔔 Notification Service"
+        url: /notification-service/v3/api-docs
+    operationsSorter: method
+    tagsSorter: alpha
+    disable-swagger-default-url: true
+  show-actuator: false

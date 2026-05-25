@@ -1,0 +1,268 @@
+version: '3.8'
+
+networks:
+  ecommerce-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  mongodb-data:
+  redis-data:
+  elasticsearch-data:
+
+services:
+
+  # ============================================================
+  # MySQL 8.0 - 訂單、用戶、支付
+  # ============================================================
+  mysql:
+    image: mysql:8.0
+    platform: linux/arm64
+    container_name: ecommerce-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: ecommerce
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # MongoDB 7.0 - 商品詳情、SKU、評論
+  # ============================================================
+  mongodb:
+    image: mongo:7.0
+    platform: linux/arm64
+    container_name: ecommerce-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123456
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Redis 7 - Session、購物車、熱點快取
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    platform: linux/arm64
+    container_name: ecommerce-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # RabbitMQ 3 - 訂單確認、支付通知、Email 發送
+  # ============================================================
+  rabbitmq:
+    image: rabbitmq:3-management
+    platform: linux/arm64
+    container_name: ecommerce-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123456
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Zookeeper - Kafka 依賴
+  # ============================================================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    platform: linux/amd64
+    container_name: ecommerce-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - ecommerce-network
+
+  # ============================================================
+  # Kafka - 用戶行為埋點、頁面瀏覽、搜尋記錄
+  # ============================================================
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    platform: linux/amd64
+    container_name: ecommerce-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "29092:29092"
+    networks:
+      - ecommerce-network
+
+  # ============================================================
+  # Elasticsearch 8 - 商品搜尋、日誌索引
+  # ============================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    platform: linux/arm64
+    container_name: ecommerce-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ============================================================
+  # Logstash 8 - 日誌收集處理
+  # ============================================================
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    platform: linux/arm64
+    container_name: ecommerce-logstash
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./infrastructure/elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    ports:
+      - "5044:5044"
+      - "5001:5000/tcp"
+      - "5001:5000/udp"
+      - "9600:9600"
+    environment:
+      - "LS_JAVA_OPTS=-Xms256m -Xmx256m"
+    networks:
+      - ecommerce-network
+
+  # ============================================================
+  # Kibana 8 - 日誌視覺化 Dashboard
+  # ============================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    platform: linux/arm64
+    container_name: ecommerce-kibana
+    depends_on:
+      - elasticsearch
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - ecommerce-network
+
+  # ============================================================
+  # Nginx - 反向代理，統一入口
+  # ============================================================
+  nginx:
+    image: nginx:alpine
+    platform: linux/arm64
+    container_name: ecommerce-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - elasticsearch
+    networks:
+      - ecommerce-network
+
+  # ============================================================
+  # Zipkin - 分散式追蹤視覺化 UI
+  # ============================================================
+  zipkin:
+    image: openzipkin/zipkin:latest
+    platform: linux/arm64
+    container_name: ecommerce-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - ecommerce-network
+    environment:
+      - STORAGE_TYPE=mem
+
+  # ============================================================
+  # Eureka Server - 服務發現中心
+  # ============================================================
+  eureka-server:
+    build:
+      context: ./backend/eureka-server
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    container_name: ecommerce-eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ============================================================
+  # Config Server - 集中配置中心
+  # ============================================================
+  config-server:
+    build:
+      context: ./backend/config-server
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    container_name: ecommerce-config
+    ports:
+      - "8888:8888"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - CONFIG_REPO_PATH=/config-repo
+    volumes:
+      - ./config-repo:/config-repo:ro
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5

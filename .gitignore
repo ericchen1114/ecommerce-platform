@@ -1,0 +1,55 @@
+# ─── 環境變數 / 敏感設定（絕對不能上傳）────────────────────────────────────
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+
+# ─── Java / Maven ────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ─── Spring Boot ─────────────────────────────────────────────────────────────
+application-local.yml
+application-local.properties
+application-prod.yml
+application-prod.properties
+
+# ─── Node / Vue ──────────────────────────────────────────────────────────────
+node_modules/
+dist/
+.pnpm-debug.log*
+.npm
+*.local
+frontend/*/dist/
+
+# ─── IDE ─────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── Logs / 暫存 ─────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+tmp/
+temp/

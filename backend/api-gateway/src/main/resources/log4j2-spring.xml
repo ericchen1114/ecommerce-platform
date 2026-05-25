@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+
+  <Properties>
+    <Property name="LOG_DIR">${LOG_DIR:./logs}</Property>
+    <Property name="SERVICE_NAME">api-gateway</Property>
+    <Property name="PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%X{traceId}] [%X{userId}] %-5level %logger{36} - %msg%n</Property>
+  </Properties>
+
+  <Appenders>
+
+    <!-- Console：開發期彩色輸出 -->
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="${PATTERN}"/>
+    </Console>
+
+    <!-- File：JSON 格式供 Logstash / ELK 收集 -->
+    <RollingFile name="JsonFile"
+                 fileName="${LOG_DIR}/api-gateway.log"
+                 filePattern="${LOG_DIR}/api-gateway-%d{yyyy-MM-dd}-%i.log.gz">
+      <JsonTemplateLayout>
+        <EventTemplateAdditionalField key="service" value="api-gateway"/>
+        <EventTemplateAdditionalField key="env"     value="local"/>
+      </JsonTemplateLayout>
+      <Policies>
+        <TimeBasedTriggeringPolicy interval="1"/>
+        <SizeBasedTriggeringPolicy size="50MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="7"/>
+    </RollingFile>
+
+  </Appenders>
+
+  <Loggers>
+    <Logger name="com.ecommerce" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="JsonFile"/>
+    </Logger>
+    <Logger name="org.springframework.web" level="INFO" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
+    <Root level="WARN">
+      <AppenderRef ref="Console"/>
+    </Root>
+  </Loggers>
+
+</Configuration>
