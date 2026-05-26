@@ -7,25 +7,23 @@ spring:
     config:
       username: ${CONFIG_USERNAME:admin}
       password: ${CONFIG_PASSWORD:config123}
-  datasource:
-    url: "jdbc:mysql://localhost:3306/ecommerce?useSSL=false&serverTimezone=Asia/Taipei&characterEncoding=UTF-8&allowPublicKeyRetrieval=true"
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root123456}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    database-platform: org.hibernate.dialect.MySQLDialect
   rabbitmq:
     host: localhost
     port: 5672
     username: ${RABBITMQ_USERNAME:admin}
     password: ${RABBITMQ_PASSWORD:admin123456}
   data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/ecommerce}
     redis:
-      host: localhost
+      host: ${REDIS_HOST:localhost}
       port: 6379
+
+  # Redis 快取設定
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000   # 10 分鐘 TTL
 
 eureka:
   client:
