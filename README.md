@@ -28,7 +28,7 @@
 │  Eureka :8761  │  Config Server :8888  │  Zipkin :9411      │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│  MySQL  │  MongoDB  │  Redis  │  RabbitMQ  │  Elasticsearch │
+│        MySQL  │  MongoDB  │  Redis  │  RabbitMQ        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -44,8 +44,8 @@
 | **設計模式** | Factory、Strategy、Observer、Repository、Mapper（MapStruct）|
 | **資料庫** | MySQL 8（主從讀寫分離）、MongoDB 7、Redis 7 |
 | **訊息佇列** | RabbitMQ 3（Saga / DLQ / 通知）、Kafka |
-| **搜尋引擎** | Elasticsearch 8.11 |
-| **可觀測性** | Micrometer Tracing + Zipkin、Log4j2 AOP + MDC、ELK Stack |
+| **全文搜尋** | MongoDB $text 原生索引（商品搜尋）|
+| **可觀測性** | Micrometer Tracing + Zipkin、Log4j2 AOP + MDC、ELK Stack（日誌索引）|
 | **穩定性** | Resilience4j（CircuitBreaker / Retry / TimeLimiter）|
 | **API 文件** | SpringDoc OpenAPI 2.3（Swagger UI，Gateway 聚合 6 服務）|
 | **物件映射** | MapStruct 1.5.5（編譯期生成）|
@@ -61,7 +61,7 @@
 |------|------|------|
 | `api-gateway` | 8080 | JWT 驗證、路由轉發、全局過濾 |
 | `user-service` | 8081 | 會員認證、JWT 簽發、BCrypt 加密 |
-| `product-service` | 8082 | 商品 CRUD、ES 全文搜尋、Redis 快取 |
+| `product-service` | 8082 | 商品 CRUD、MongoDB $text 全文搜尋、Redis 快取 |
 | `order-service` | 8083 | Saga 協調、Factory + Strategy + Observer 三模式 |
 | `payment-service` | 8084 | Saga Consumer、付款狀態機、補償事務 |
 | `notification-service` | 8085 | RabbitMQ Consumer、Email / SMS 非同步發送 |
@@ -164,7 +164,7 @@ cd frontend/admin-frontend && npm install && npm run dev   # :5174
 | Swagger UI（聚合所有服務）| http://localhost:8080/swagger-ui/index.html |
 | Eureka Dashboard | http://localhost:8761（admin / 見 .env）|
 | RabbitMQ Management | http://localhost:15672（admin / 見 .env）|
-| Kibana 日誌 | http://localhost:5601 |
+| Kibana 日誌（ELK）| http://localhost:5601 |
 | Zipkin 鏈路追蹤 | http://localhost:9411 |
 
 ---
